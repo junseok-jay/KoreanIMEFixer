@@ -13,11 +13,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\jjs_0\\Desktop\\wooTech\\KoreanIMEFixer\\KoreanIMEFixer.csproj",
+      "projectUniqueName": "C:\\Users\\jjs_0\\Desktop\\wooTech\\KorIMEfix\\KoreanIMEFixer\\KoreanIMEFixer.csproj",
       "projectName": "KoreanIMEFixer",
-      "projectPath": "C:\\Users\\jjs_0\\Desktop\\wooTech\\KoreanIMEFixer\\KoreanIMEFixer.csproj",
+      "projectPath": "C:\\Users\\jjs_0\\Desktop\\wooTech\\KorIMEfix\\KoreanIMEFixer\\KoreanIMEFixer.csproj",
       "packagesPath": "C:\\Users\\jjs_0\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\jjs_0\\Desktop\\wooTech\\KoreanIMEFixer\\obj\\",
+      "outputPath": "C:\\Users\\jjs_0\\Desktop\\wooTech\\KorIMEfix\\KoreanIMEFixer\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\jjs_0\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -64,7 +64,7 @@
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
           },
-          "Microsoft.WindowsDesktop.App.WPF": {
+          "Microsoft.WindowsDesktop.App": {
             "privateAssets": "none"
           }
         },

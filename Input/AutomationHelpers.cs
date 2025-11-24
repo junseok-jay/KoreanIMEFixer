@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Diagnostics;
 using System.Windows.Automation;
 using KoreanIMEFixer.Logging;
 
@@ -128,6 +129,7 @@ namespace KoreanIMEFixer
         // This uses descendant bounding-rectangle clustering (columns/rows) to guess a table in hosts that don't expose TablePattern (e.g., Notion)
         public static bool IsLikelyNotionTable()
         {
+            var sw = Stopwatch.StartNew();
             try
             {
                 AutomationElement? el = null;
@@ -158,12 +160,12 @@ namespace KoreanIMEFixer
 
                 if (el == null) return false;
 
-                var docRect = el.Current.BoundingRectangle;
+                var docRect = el!.Current.BoundingRectangle;
                 if (docRect.IsEmpty)
                 {
                     try
                     {
-                        var p = TreeWalker.ControlViewWalker.GetParent(el);
+                        var p = TreeWalker.ControlViewWalker.GetParent(el!);
                         int depth = 0;
                         while (p != null && depth < 6)
                         {
@@ -181,24 +183,56 @@ namespace KoreanIMEFixer
 
                 if (docRect.IsEmpty) return false;
 
-                var all = el.FindAll(TreeScope.Descendants, System.Windows.Automation.Condition.TrueCondition);
-                int total = all?.Count ?? 0;
+                // Bounded traversal: sample descendant bounding-rectangles without enumerating all
                 var rects = new List<System.Windows.Rect>();
-                int limit = Math.Min(total, 250);
-                for (int i = 0; i < limit; i++)
+                const int MaxSample = 100; // how many candidate rects to collect
+                const int MaxVisited = 1000; // cap how many nodes we traverse
+                try
                 {
+                    var walker = TreeWalker.ControlViewWalker;
+                    var q = new Queue<AutomationElement>();
+                    int visited = 0;
                     try
                     {
-                        var d = all[i];
-                        if (d == null) continue;
-                        var r = d.Current.BoundingRectangle;
-                        if (!r.IsEmpty && r.Width > 2 && r.Height > 2)
+                        var first = walker.GetFirstChild(el!);
+                        if (first != null) q.Enqueue(first);
+                        while (q.Count > 0 && rects.Count < MaxSample && visited < MaxVisited)
                         {
-                            if (Math.Abs(r.Width - docRect.Width) < 4 && Math.Abs(r.Height - docRect.Height) < 4) continue;
-                            rects.Add(r);
+                            var node = q.Dequeue();
+                            visited++;
+                            try
+                            {
+                                var r = node.Current.BoundingRectangle;
+                                if (!r.IsEmpty && r.Width > 2 && r.Height > 2)
+                                {
+                                    if (!(Math.Abs(r.Width - docRect.Width) < 4 && Math.Abs(r.Height - docRect.Height) < 4))
+                                    {
+                                        rects.Add(r);
+                                    }
+                                }
+                            }
+                            catch { }
+
+                            try
+                            {
+                                var child = walker.GetFirstChild(node);
+                                while (child != null)
+                                {
+                                    q.Enqueue(child);
+                                    child = walker.GetNextSibling(child);
+                                }
+                            }
+                            catch { }
                         }
                     }
-                    catch { }
+                    catch (Exception exTrv)
+                    {
+                        LogService.Write("IsLikelyNotionTable: traversal failed: " + exTrv.Message);
+                    }
+                }
+                catch (Exception exTraverse)
+                {
+                    LogService.Write("IsLikelyNotionTable: sampling failed: " + exTraverse.Message);
                 }
 
                 LogService.Write($"IsLikelyNotionTable: docRect L={docRect.Left:0},T={docRect.Top:0},W={docRect.Width:0},H={docRect.Height:0}; descendantsConsidered={rects.Count}");

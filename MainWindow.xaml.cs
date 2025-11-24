@@ -197,70 +197,55 @@ namespace KoreanIMEFixer
                                 
                                 if (isWhitelisted && _doubleEnterFixEnabled)
                                 {
-                                    // run a quick heuristic to check whether the focused area looks like a Notion table cell
-                                    bool likelyTable = false;
-                                    try
-                                    {
-                                        likelyTable = IsLikelyNotionTable();
-                                        LogService.Write($"Notion table-detection heuristic: likelyTable={likelyTable}");
-                                    }
-                                    catch (Exception hx)
-                                    {
-                                        LogService.Write("Table-detection heuristic failed: " + hx.Message);
-                                        likelyTable = false;
-                                    }
-
-                                    if (!likelyTable)
-                                    {
-                                        LogService.Write("No caret + whitelisted but not a detected table → using fallback mode instead of double-Enter");
-                                        // Activate fallback mode rather than aggressive double-Enter to avoid false positives
-                                        _forceNextKeyFallback = true;
-                                        return;
-                                    }
-
                                     LogService.Write("No caret + whitelisted → Double-Enter (fast) fix");
                                     _restorer.ForceToKorean();
-                                    // very short pause to let layout switch take effect
+                                    // very short pause to let layout switch take effect (yield to scheduler)
                                     System.Threading.Thread.Sleep(8);
 
-                                    // Prefer scancode SendInput (more likely accepted by Electron)
-                                    bool sc = _restorer.SendEnterScancode();
-                                    LogService.Write($"Double-Enter fast: scancode sent={sc}");
+                                    // Prefer sending two Enter scancodes back-to-back in a single SendInput call
+                                    bool sc = _restorer.SendEnterScancodeDoubleFast();
+                                    LogService.Write($"Double-Enter fast (double scancode): scancode sent={sc}");
                                     if (!sc)
                                     {
-                                        // quick virtual-key attempt
-                                        bool vk = _restorer.SendVirtualKey((ushort)Keys.Enter);
-                                        LogService.Write($"Double-Enter fast: virtual-key sent={vk}");
-                                        if (!vk)
+                                        // fallback: try single scancode once more
+                                        bool sc2 = _restorer.SendEnterScancode();
+                                        LogService.Write($"Double-Enter fast fallback: single scancode sent={sc2}");
+                                        if (!sc2)
                                         {
-                                            // last-resort: PostMessage to focused control
-                                            try
+                                            // quick virtual-key attempt
+                                            bool vk = _restorer.SendVirtualKey((ushort)Keys.Enter);
+                                            LogService.Write($"Double-Enter fast: virtual-key sent={vk}");
+                                            if (!vk)
                                             {
-                                                IntPtr fg = GetForegroundWindow();
-                                                uint pid; uint tid = GetWindowThreadProcessId(fg, out pid);
-                                                IntPtr target = fg;
+                                                // last-resort: PostMessage to focused control
                                                 try
                                                 {
-                                                    var gti = new GUITHREADINFO();
-                                                    gti.cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(GUITHREADINFO));
-                                                    if (tid != 0 && GetGUIThreadInfo(tid, ref gti))
+                                                    IntPtr fg = GetForegroundWindow();
+                                                    uint pid; uint tid = GetWindowThreadProcessId(fg, out pid);
+                                                    IntPtr target = fg;
+                                                    try
                                                     {
-                                                        if (gti.hwndFocus != IntPtr.Zero) target = gti.hwndFocus;
+                                                        var gti = new GUITHREADINFO();
+                                                        gti.cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(GUITHREADINFO));
+                                                        if (tid != 0 && GetGUIThreadInfo(tid, ref gti))
+                                                        {
+                                                            if (gti.hwndFocus != IntPtr.Zero) target = gti.hwndFocus;
+                                                        }
                                                     }
-                                                }
-                                                catch { }
+                                                    catch { }
 
-                                                bool posted = _restorer.TryPostEnterToWindow(target);
-                                                LogService.Write($"Double-Enter fast: PostMessage fallback success={posted} to HWND=0x{target.ToInt64():X}");
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                LogService.Write("Double-Enter fast: final PostMessage fallback failed: " + ex.Message);
+                                                    bool posted = _restorer.TryPostEnterToWindow(target);
+                                                    LogService.Write($"Double-Enter fast: PostMessage fallback success={posted} to HWND=0x{target.ToInt64():X}");
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    LogService.Write("Double-Enter fast: final PostMessage fallback failed: " + ex.Message);
+                                                }
                                             }
                                         }
                                     }
 
-                                    System.Threading.Thread.Sleep(6);
+                                    System.Threading.Thread.Sleep(8);
                                     return;
                                 }
                                 
@@ -832,11 +817,6 @@ namespace KoreanIMEFixer
         private void LogFocusedAutomationElementInfo()
         {
             try { AutomationHelpers.LogFocusedAutomationElementInfo(); } catch (Exception ex) { LogService.Write("LogFocusedAutomationElementInfo wrapper failed: " + ex.Message); }
-        }
-
-        private bool IsLikelyNotionTable()
-        {
-            try { return AutomationHelpers.IsLikelyNotionTable(); } catch (Exception ex) { LogService.Write("IsLikelyNotionTable wrapper failed: " + ex.Message); return false; }
         }
     }
 }

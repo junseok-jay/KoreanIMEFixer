@@ -609,6 +609,54 @@ namespace KoreanIMEFixer.IME
             }
         }
 
+        // Fast path: send two Enter scancode press+release events in a single SendInput call
+        // to minimize the inter-key gap. This constructs four INPUTs: down, up, down, up.
+        public bool SendEnterScancodeDoubleFast()
+        {
+            try
+            {
+                const uint KEYEVENTF_SCANCODE = 0x0008;
+                const uint KEYEVENTF_KEYUP = 0x0002;
+                const int VK_RETURN = 0x0D;
+                uint scan = MapVirtualKey((uint)VK_RETURN, 0);
+
+                INPUT[] inputs = new INPUT[4];
+
+                // first Enter down
+                inputs[0].type = 1;
+                inputs[0].ki.ki.wVk = 0;
+                inputs[0].ki.ki.wScan = (ushort)scan;
+                inputs[0].ki.ki.dwFlags = KEYEVENTF_SCANCODE;
+
+                // first Enter up
+                inputs[1].type = 1;
+                inputs[1].ki.ki.wVk = 0;
+                inputs[1].ki.ki.wScan = (ushort)scan;
+                inputs[1].ki.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
+
+                // second Enter down
+                inputs[2].type = 1;
+                inputs[2].ki.ki.wVk = 0;
+                inputs[2].ki.ki.wScan = (ushort)scan;
+                inputs[2].ki.ki.dwFlags = KEYEVENTF_SCANCODE;
+
+                // second Enter up
+                inputs[3].type = 1;
+                inputs[3].ki.ki.wVk = 0;
+                inputs[3].ki.ki.wScan = (ushort)scan;
+                inputs[3].ki.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
+
+                uint sent = SendInput(4, inputs, INPUT.Size);
+                LogService.Write($"SendEnterScancodeDoubleFast: scan={scan} sent={sent}");
+                return sent == 4;
+            }
+            catch (Exception ex)
+            {
+                LogService.Write("SendEnterScancodeDoubleFast failed: " + ex.Message);
+                return false;
+            }
+        }
+
         // Last-resort: post WM_KEYDOWN/WM_KEYUP for Enter to a specific window using AttachThreadInput to target thread.
         public bool TryPostEnterToWindow(IntPtr hwndTarget)
         {

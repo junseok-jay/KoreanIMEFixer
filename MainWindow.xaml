@@ -7,6 +7,29 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
+        <Border Grid.Row="0" Background="#FFF8C471" Padding="12" Margin="8" CornerRadius="6">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
+                <TextBlock x:Name="StatusText" Text="Korean IME Fixer" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <CheckBox x:Name="MonitorToggle" Content="모니터링 켜기" Checked="MonitorToggle_Checked" Unchecked="MonitorToggle_Unchecked" FontSize="14" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <CheckBox x:Name="DoubleEnterToggle" Content="엔터 두 번 자동 보정" Margin="0,0,12,0" IsChecked="True" Checked="DoubleEnterToggle_Checked" Unchecked="DoubleEnterToggle_Unchecked" ToolTip="Enter 후 캐럿이 보이지 않을 때 자동으로 Enter를 한 번 더 보냅니다. (옵션)" FontSize="14" VerticalAlignment="Center" />
+                <Button x:Name="TestRestoreButton" Content="한/영 강제 전환 테스트" Margin="0,0,12,0" Click="TestRestoreButton_Click"/>
+                <StackPanel Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
+                    <TextBox x:Name="WhitelistText" Width="320" Height="24" ToolTip="프로세스명(쉼표로 구분), 예: code, notion" />
+                    <Button x:Name="SaveWhitelistButton" Content="저장" Margin="8,0,0,0" Click="SaveWhitelistButton_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Background="#FFFFFF" Padding="8" Margin="8">
+            <StackPanel>
+                <TextBlock Text="로그 (app.log)" FontWeight="Bold" Margin="0,0,0,6" />
+                <ListBox x:Name="LogView" FontSize="12" Height="320" />
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>
